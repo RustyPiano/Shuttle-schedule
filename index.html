@@ -2,108 +2,120 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>线路8班车时刻表</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* 样式保留用于其他可能的用途 */
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
     </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body class="bg-gradient-to-br from-orange-50 to-amber-50 min-h-screen">
-    <div class="container mx-auto px-4 py-6 max-w-4xl">
-        <!-- 头部 -->
-        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-            <h1 class="text-2xl md:text-3xl font-bold text-orange-600 text-center mb-2">线路8 班车时刻表</h1>
-            <p class="text-center text-gray-500 text-sm" id="currentDateTime"></p>
+<body class="bg-gray-50 min-h-screen text-gray-800 pb-safe">
+
+    <!-- Sticky Header -->
+    <header class="sticky top-0 z-50 glass border-b border-gray-200/50 shadow-sm">
+        <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+            <div>
+                <h1 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <i data-lucide="bus" class="w-5 h-5 text-primary-600"></i>
+                    线路8 时刻表
+                </h1>
+                <p class="text-xs text-gray-500 mt-0.5" id="currentDateTime">加载中...</p>
+            </div>
+            <button onclick="resetToNow()" class="p-2 rounded-full bg-primary-50 text-primary-600 hover:bg-primary-100 transition active:scale-95">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 py-4 space-y-5">
+
+        <!-- Date Selection (Chips) -->
+        <div class="flex gap-3 overflow-x-auto hide-scrollbar pb-1" id="dateChips">
+            <!-- Populated by JS -->
         </div>
 
-        <!-- 时间选择器 -->
-        <div class="bg-white rounded-2xl shadow-lg p-5 mb-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">选择日期</label>
-                    <select id="dateSelect" class="w-full px-4 py-2.5 border-2 border-orange-200 rounded-lg focus:outline-none focus:border-orange-400 transition">
-                        <option value="today">今天</option>
-                        <option value="tomorrow">明天</option>
-                        <option value="saturday">本周六</option>
-                        <option value="sunday">本周日</option>
-                        <option value="custom">自定义</option>
-                    </select>
-                </div>
-                <div id="customDateContainer" class="hidden">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">自定义日期</label>
-                    <input type="date" id="customDate" class="w-full px-4 py-2.5 border-2 border-orange-200 rounded-lg focus:outline-none focus:border-orange-400 transition">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">选择时间</label>
-                    <input type="time" id="timeSelect" class="w-full px-4 py-2.5 border-2 border-orange-200 rounded-lg focus:outline-none focus:border-orange-400 transition">
-                </div>
-            </div>
-            <div class="mt-4 flex gap-2">
-                <button onclick="setCurrentTime()" class="flex-1 bg-orange-500 text-white py-2.5 rounded-lg hover:bg-orange-600 transition font-medium">
-                    当前时间
-                </button>
-                <button onclick="updateSchedule()" class="flex-1 bg-amber-500 text-white py-2.5 rounded-lg hover:bg-amber-600 transition font-medium">
-                    查询班车
-                </button>
-            </div>
+        <!-- Route Selection (Tabs) -->
+        <div class="bg-gray-200/60 p-1 rounded-xl flex relative">
+            <div id="tabIndicator" class="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-lg shadow-sm transition-all duration-300 ease-out translate-x-0"></div>
+            <button onclick="switchRoute('route1')" class="flex-1 relative z-10 py-2 text-sm font-medium text-center rounded-lg transition-colors duration-200" id="tab-route1">
+                三号院 → 一号院
+            </button>
+            <button onclick="switchRoute('route2')" class="flex-1 relative z-10 py-2 text-sm font-medium text-center rounded-lg transition-colors duration-200" id="tab-route2">
+                一号院 → 三号院
+            </button>
         </div>
 
-        <!-- 日期类型显示 -->
-        <div id="dayTypeInfo" class="bg-gradient-to-r from-orange-100 to-amber-100 rounded-xl p-4 mb-6 text-center">
-            <span class="text-lg font-semibold text-orange-700" id="dayTypeText"></span>
-        </div>
-
-        <!-- 班车时刻表 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <!-- 三号院 → 一号院 -->
-            <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div class="bg-gradient-to-r from-orange-500 to-orange-600 p-4">
-                    <h2 class="text-xl font-bold text-white text-center">三号院 → 一号院</h2>
+        <!-- Next Bus Card -->
+        <div id="nextBusCard" class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/20 p-5">
+            <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+            <div class="absolute bottom-0 left-0 -mb-4 -ml-4 w-20 h-20 bg-black/5 rounded-full blur-xl"></div>
+            
+            <div class="relative z-10">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-primary-100 text-sm font-medium mb-1">下一班车</p>
+                        <h2 class="text-4xl font-bold tracking-tight" id="nextBusTime">--:--</h2>
+                    </div>
+                    <div class="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+                        <span class="text-xs font-semibold" id="timeRemaining">-- 分钟</span>
+                    </div>
                 </div>
-                <div id="route1Schedule" class="p-4">
-                    <!-- 动态生成 -->
-                </div>
-            </div>
-
-            <!-- 一号院 → 三号院 -->
-            <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div class="bg-gradient-to-r from-amber-500 to-amber-600 p-4">
-                    <h2 class="text-xl font-bold text-white text-center">一号院 → 三号院</h2>
-                </div>
-                <div id="route2Schedule" class="p-4">
-                    <!-- 动态生成 -->
+                
+                <div class="flex items-center gap-2 text-primary-50 text-sm">
+                    <i data-lucide="clock" class="w-4 h-4"></i>
+                    <span id="nextBusStatus">正在计算...</span>
                 </div>
             </div>
         </div>
 
-        <!-- 备注信息 -->
-        <div class="bg-white rounded-2xl shadow-lg p-6">
-            <h3 class="text-lg font-bold text-orange-600 mb-3 flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                </svg>
+        <!-- Schedule List -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
+                <h3 class="font-semibold text-gray-700 flex items-center gap-2">
+                    <i data-lucide="list" class="w-4 h-4 text-gray-400"></i>
+                    全部班次
+                </h3>
+                <span class="text-xs text-gray-400" id="scheduleCount">0 班</span>
+            </div>
+            <div id="scheduleList" class="divide-y divide-gray-100 max-h-[50vh] overflow-y-auto scroll-smooth">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
+            <h4 class="text-blue-800 font-semibold text-sm mb-2 flex items-center gap-2">
+                <i data-lucide="info" class="w-4 h-4"></i>
                 重要提示
-            </h3>
-            <ul class="space-y-2 text-gray-700 text-sm">
-                <li class="flex items-start">
-                    <span class="text-orange-500 mr-2">•</span>
-                    <span>线路8在 <strong>17:00以后</strong> 的班次会途径科大佳园</span>
-                </li>
-                <li class="flex items-start">
-                    <span class="text-orange-500 mr-2">•</span>
-                    <span>一号院内环线运行时间：<strong>7:30-12:30, 14:00-18:30</strong></span>
-                </li>
-                <li class="flex items-start">
-                    <span class="text-orange-500 mr-2">•</span>
-                    <span>三号院内环线运行时间：<strong>7:30-12:30, 14:00-18:30</strong></span>
-                </li>
+            </h4>
+            <ul class="space-y-1.5 text-xs text-blue-700/80 list-disc list-inside">
+                <li>线路8在 <strong>17:00以后</strong> 的班次会途径科大佳园</li>
+                <li>一号院内环线：7:30-12:30, 14:00-18:30</li>
+                <li>三号院内环线：7:30-12:30, 14:00-18:30</li>
             </ul>
         </div>
-    </div>
+
+        <div class="h-4"></div>
+    </main>
 
     <script>
-        // 班车时刻数据
+        // Data
         const scheduleData = {
             weekday: {
                 route1: ['07:50', '09:45', '10:00', '12:00', '12:35', '13:45', '16:25', '17:05', '17:30', '17:40', '17:55', '18:25', '21:00', '21:30', '21:35', '21:55', '22:15'],
@@ -119,7 +131,82 @@
             }
         };
 
-        // 获取星期类型
+        // State
+        let state = {
+            selectedDate: 'today', // today, tomorrow, saturday, sunday
+            selectedRoute: 'route1', // route1, route2
+            targetDate: new Date()
+        };
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initDateChips();
+            updateTime();
+            setInterval(updateTime, 1000);
+            render();
+        });
+
+        function updateTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            const dateStr = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
+            document.getElementById('currentDateTime').textContent = `${dateStr} ${timeStr}`;
+            
+            // Only update schedule status if looking at today to keep countdown accurate
+            if (state.selectedDate === 'today') {
+                updateNextBusStatus();
+            }
+        }
+
+        function initDateChips() {
+            const chips = [
+                { id: 'today', label: '今天' },
+                { id: 'tomorrow', label: '明天' },
+                { id: 'saturday', label: '本周六' },
+                { id: 'sunday', label: '本周日' }
+            ];
+            
+            const container = document.getElementById('dateChips');
+            container.innerHTML = chips.map(chip => `
+                <button onclick="selectDate('${chip.id}')" 
+                    class="date-chip whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all border border-transparent"
+                    id="chip-${chip.id}">
+                    ${chip.label}
+                </button>
+            `).join('');
+        }
+
+        function selectDate(dateId) {
+            state.selectedDate = dateId;
+            
+            // Calculate target date
+            const now = new Date();
+            let target = new Date();
+            
+            if (dateId === 'tomorrow') {
+                target.setDate(now.getDate() + 1);
+            } else if (dateId === 'saturday') {
+                const day = now.getDay();
+                const diff = (6 - day + 7) % 7;
+                target.setDate(now.getDate() + (diff || 7)); // If today is Sat, show next Sat? Or today? Logic: "This Saturday" usually means upcoming or today.
+                if (day === 6 && diff === 0) target = now; // If today is Sat, keep today
+            } else if (dateId === 'sunday') {
+                const day = now.getDay();
+                const diff = (7 - day) % 7; // 0 is Sunday
+                const daysToAdd = day === 0 ? 0 : 7 - day;
+                target.setDate(now.getDate() + daysToAdd);
+            }
+            
+            state.targetDate = target;
+            render();
+        }
+
+        function switchRoute(routeId) {
+            state.selectedRoute = routeId;
+            render();
+        }
+
         function getDayType(date) {
             const day = date.getDay();
             if (day === 0) return 'sunday';
@@ -127,156 +214,192 @@
             return 'weekday';
         }
 
-        // 获取星期显示文本
-        function getDayTypeName(type) {
-            const names = {
-                weekday: '工作日 (周一至周五)',
-                saturday: '周六',
-                sunday: '周日'
-            };
-            return names[type];
-        }
-
-        // 更新当前日期时间显示
-        function updateCurrentDateTime() {
-            const now = new Date();
-            const options = { 
-                year: 'numeric', 
-                month: '2-digit', 
-                day: '2-digit', 
-                hour: '2-digit', 
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false 
-            };
-            document.getElementById('currentDateTime').textContent = 
-                '当前时间：' + now.toLocaleString('zh-CN', options);
-        }
-
-        // 设置当前时间
-        function setCurrentTime() {
-            const now = new Date();
-            document.getElementById('dateSelect').value = 'today';
-            document.getElementById('customDateContainer').classList.add('hidden');
-            document.getElementById('timeSelect').value = 
-                String(now.getHours()).padStart(2, '0') + ':' + 
-                String(now.getMinutes()).padStart(2, '0');
-            updateSchedule();
-        }
-
-        // 渲染班车时刻
-        function renderSchedule(containerId, times, currentTime) {
-            const container = document.getElementById(containerId);
-            const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
-            
-            let nextBusIndex = -1;
-            let html = '<div class="grid grid-cols-3 gap-2">';
-            
-            times.forEach((time, index) => {
-                const [hour, minute] = time.split(':').map(Number);
-                const timeMinutes = hour * 60 + minute;
-                const isPast = timeMinutes < currentMinutes;
-                const isNext = nextBusIndex === -1 && timeMinutes >= currentMinutes;
-                
-                if (isNext) nextBusIndex = index;
-                
-                let className = 'py-3 px-2 rounded-lg text-center font-medium transition ';
-                
-                if (isNext) {
-                    className += 'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg transform scale-105';
-                } else if (isPast) {
-                    className += 'bg-gray-100 text-gray-400';
-                } else {
-                    className += 'bg-orange-50 text-orange-700 hover:bg-orange-100';
-                }
-                
-                html += `<div class="${className}">${time}</div>`;
+        function render() {
+            // Update Chips UI
+            document.querySelectorAll('.date-chip').forEach(el => {
+                const isSelected = el.id === `chip-${state.selectedDate}`;
+                el.className = `date-chip whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                    isSelected 
+                    ? 'bg-gray-900 text-white border-gray-900 shadow-md' 
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`;
             });
+
+            // Update Tabs UI
+            const isRoute1 = state.selectedRoute === 'route1';
+            const indicator = document.getElementById('tabIndicator');
+            const tab1 = document.getElementById('tab-route1');
+            const tab2 = document.getElementById('tab-route2');
             
-            html += '</div>';
+            indicator.style.transform = isRoute1 ? 'translateX(0)' : 'translateX(100%)';
+            indicator.style.left = isRoute1 ? '4px' : '0px'; // Adjust for padding
             
-            if (nextBusIndex === -1) {
-                html = '<p class="text-center text-gray-500 py-8">今日班车已结束</p>';
-            } else {
-                const nextTime = times[nextBusIndex];
-                const [hour, minute] = nextTime.split(':').map(Number);
-                const timeMinutes = hour * 60 + minute;
-                const diffMinutes = timeMinutes - currentMinutes;
+            tab1.className = `flex-1 relative z-10 py-2 text-sm font-medium text-center rounded-lg transition-colors duration-200 ${isRoute1 ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`;
+            tab2.className = `flex-1 relative z-10 py-2 text-sm font-medium text-center rounded-lg transition-colors duration-200 ${!isRoute1 ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`;
+
+            // Get Schedule
+            const dayType = getDayType(state.targetDate);
+            const times = scheduleData[dayType][state.selectedRoute];
+            
+            // Render List & Next Bus
+            renderScheduleList(times);
+            updateNextBusStatus(times);
+        }
+
+        function renderScheduleList(times) {
+            const list = document.getElementById('scheduleList');
+            const now = new Date();
+            const isToday = state.targetDate.toDateString() === now.toDateString();
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+            document.getElementById('scheduleCount').textContent = `${times.length} 班`;
+
+            let html = '';
+            let foundNext = false;
+
+            times.forEach((time, index) => {
+                const [h, m] = time.split(':').map(Number);
+                const timeMinutes = h * 60 + m;
                 
-                html = `
-                    <div class="mb-4 p-4 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border-2 border-orange-200">
-                        <div class="text-center">
-                            <p class="text-sm text-gray-600 mb-1">下一班车</p>
-                            <p class="text-3xl font-bold text-orange-600">${nextTime}</p>
-                            <p class="text-sm text-orange-500 mt-1">还有 ${diffMinutes} 分钟</p>
+                let status = 'future'; // future, next, past
+                if (isToday) {
+                    if (timeMinutes < currentMinutes) status = 'past';
+                    else if (!foundNext) {
+                        status = 'next';
+                        foundNext = true;
+                    }
+                }
+
+                // Styles
+                let containerClass = 'px-4 py-3 flex justify-between items-center transition-colors ';
+                let timeClass = 'text-lg font-mono font-medium ';
+                let statusClass = 'text-xs px-2 py-0.5 rounded ';
+                let icon = '';
+
+                if (status === 'past') {
+                    containerClass += 'bg-gray-50/50 text-gray-400';
+                    timeClass += 'text-gray-400';
+                    statusClass += 'bg-gray-100 text-gray-400';
+                    icon = '<i data-lucide="check" class="w-4 h-4 opacity-50"></i>';
+                } else if (status === 'next') {
+                    containerClass += 'bg-primary-50 border-l-4 border-primary-500';
+                    timeClass += 'text-primary-700 font-bold';
+                    statusClass += 'bg-primary-100 text-primary-700 font-semibold';
+                    icon = '<i data-lucide="clock" class="w-4 h-4 text-primary-500 animate-pulse"></i>';
+                } else {
+                    containerClass += 'hover:bg-gray-50';
+                    timeClass += 'text-gray-700';
+                    statusClass += 'bg-gray-100 text-gray-600';
+                }
+
+                html += `
+                    <div class="${containerClass}" id="${status === 'next' ? 'nextBusItem' : ''}">
+                        <div class="flex items-center gap-3">
+                            ${icon || '<div class="w-4"></div>'}
+                            <span class="${timeClass}">${time}</span>
+                        </div>
+                        <div class="${statusClass}">
+                            ${status === 'past' ? '已发车' : (status === 'next' ? '即将发车' : '等待中')}
                         </div>
                     </div>
-                ` + html;
+                `;
+            });
+
+            if (times.length === 0) {
+                html = '<div class="p-8 text-center text-gray-400 text-sm">今日无班次</div>';
             }
+
+            list.innerHTML = html;
+            lucide.createIcons();
             
-            container.innerHTML = html;
+            // Scroll to next bus if exists
+            if (isToday) {
+                setTimeout(() => {
+                    const nextEl = document.getElementById('nextBusItem');
+                    if (nextEl) {
+                        nextEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            }
         }
 
-        // 更新时刻表
-        function updateSchedule() {
-            const dateSelect = document.getElementById('dateSelect').value;
-            const timeSelect = document.getElementById('timeSelect').value;
+        function updateNextBusStatus(times) {
+            // If times not provided, fetch from current state
+            if (!times) {
+                const dayType = getDayType(state.targetDate);
+                times = scheduleData[dayType][state.selectedRoute];
+            }
+
+            const now = new Date();
+            const isToday = state.targetDate.toDateString() === now.toDateString();
             
-            let targetDate = new Date();
-            
-            if (dateSelect === 'tomorrow') {
-                targetDate.setDate(targetDate.getDate() + 1);
-            } else if (dateSelect === 'saturday') {
-                // 找到本周六
-                const currentDay = targetDate.getDay();
-                const daysUntilSaturday = (6 - currentDay + 7) % 7;
-                targetDate.setDate(targetDate.getDate() + (daysUntilSaturday || 7));
-            } else if (dateSelect === 'sunday') {
-                // 找到本周日
-                const currentDay = targetDate.getDay();
-                const daysUntilSunday = (7 - currentDay) % 7;
-                targetDate.setDate(targetDate.getDate() + (daysUntilSunday || 7));
-            } else if (dateSelect === 'custom') {
-                const customDate = document.getElementById('customDate').value;
-                if (customDate) {
-                    targetDate = new Date(customDate);
+            const nextBusCard = document.getElementById('nextBusCard');
+            const timeDisplay = document.getElementById('nextBusTime');
+            const remainingDisplay = document.getElementById('timeRemaining');
+            const statusDisplay = document.getElementById('nextBusStatus');
+
+            if (!isToday) {
+                // Not today, show first bus of that day
+                if (times.length > 0) {
+                    timeDisplay.textContent = times[0];
+                    remainingDisplay.textContent = '非今日';
+                    statusDisplay.textContent = `该日首班车`;
+                    nextBusCard.className = 'relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-700 to-gray-800 text-white shadow-lg p-5';
+                } else {
+                    timeDisplay.textContent = '--:--';
+                    remainingDisplay.textContent = '--';
+                    statusDisplay.textContent = '该日无班次';
+                    nextBusCard.className = 'relative overflow-hidden rounded-2xl bg-gray-400 text-white shadow-lg p-5';
                 }
+                return;
             }
-            
-            if (timeSelect) {
-                const [hour, minute] = timeSelect.split(':');
-                targetDate.setHours(parseInt(hour), parseInt(minute), 0);
+
+            // It is today, calculate next bus
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const nextBus = times.find(t => {
+                const [h, m] = t.split(':').map(Number);
+                return (h * 60 + m) >= currentMinutes;
+            });
+
+            if (nextBus) {
+                const [h, m] = nextBus.split(':').map(Number);
+                const busMinutes = h * 60 + m;
+                const diff = busMinutes - currentMinutes;
+                
+                timeDisplay.textContent = nextBus;
+                
+                if (diff === 0) {
+                    remainingDisplay.textContent = '现在';
+                    statusDisplay.textContent = '正在发车，请抓紧时间';
+                } else if (diff < 60) {
+                    remainingDisplay.textContent = `${diff} 分钟`;
+                    statusDisplay.textContent = `距离下一班还有 ${diff} 分钟`;
+                } else {
+                    const hours = Math.floor(diff / 60);
+                    const mins = diff % 60;
+                    remainingDisplay.textContent = `${hours}小时${mins}分`;
+                    statusDisplay.textContent = `距离下一班还有 ${hours} 小时 ${mins} 分钟`;
+                }
+
+                // Style based on urgency
+                if (diff <= 10) {
+                    nextBusCard.className = 'relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500 to-orange-600 text-white shadow-lg shadow-orange-500/30 p-5';
+                } else {
+                    nextBusCard.className = 'relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/20 p-5';
+                }
+            } else {
+                timeDisplay.textContent = '已结束';
+                remainingDisplay.textContent = '--';
+                statusDisplay.textContent = '今日班车已全部结束';
+                nextBusCard.className = 'relative overflow-hidden rounded-2xl bg-gray-400 text-white shadow-lg p-5';
             }
-            
-            const dayType = getDayType(targetDate);
-            const schedule = scheduleData[dayType];
-            
-            document.getElementById('dayTypeText').textContent = getDayTypeName(dayType);
-            
-            renderSchedule('route1Schedule', schedule.route1, targetDate);
-            renderSchedule('route2Schedule', schedule.route2, targetDate);
         }
 
-        // 日期选择改变
-        document.getElementById('dateSelect').addEventListener('change', function() {
-            if (this.value === 'custom') {
-                document.getElementById('customDateContainer').classList.remove('hidden');
-            } else {
-                document.getElementById('customDateContainer').classList.add('hidden');
-            }
-            updateSchedule();
-        });
-
-        // 自定义日期改变
-        document.getElementById('customDate').addEventListener('change', updateSchedule);
-
-        // 时间选择改变
-        document.getElementById('timeSelect').addEventListener('change', updateSchedule);
-
-        // 初始化
-        setCurrentTime();
-        setInterval(updateCurrentDateTime, 1000);
-        updateCurrentDateTime();
+        function resetToNow() {
+            state.selectedDate = 'today';
+            state.targetDate = new Date();
+            render();
+        }
     </script>
 </body>
 </html>
