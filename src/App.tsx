@@ -14,7 +14,7 @@ function App() {
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
+    const timer = setInterval(() => setNow(new Date()), 10000); // Update every 10 seconds
     return () => clearInterval(timer);
   }, []);
 
