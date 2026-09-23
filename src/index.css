@@ -18,6 +18,12 @@
     @apply font-sans antialiased text-gray-900 bg-gray-50;
     -webkit-tap-highlight-color: transparent;
   }
+  button, summary { touch-action: manipulation; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid #9a3412; outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+  }
 }
 
 .hide-scrollbar::-webkit-scrollbar {

@@ -16,14 +16,16 @@ export function RouteTabs({ selectedRoute, onSelect }: RouteTabsProps) {
             />
             <button
                 onClick={() => onSelect('route1')}
-                className={`flex-1 relative z-10 py-2 text-sm font-medium text-center rounded-lg transition-colors duration-200 ${isRoute1 ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                aria-pressed={isRoute1}
+                className={`flex-1 relative z-10 py-3 text-sm font-medium text-center rounded-lg transition-colors duration-200 ${isRoute1 ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
                     }`}
             >
                 三号院 → 一号院
             </button>
             <button
                 onClick={() => onSelect('route2')}
-                className={`flex-1 relative z-10 py-2 text-sm font-medium text-center rounded-lg transition-colors duration-200 ${!isRoute1 ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                aria-pressed={!isRoute1}
+                className={`flex-1 relative z-10 py-3 text-sm font-medium text-center rounded-lg transition-colors duration-200 ${!isRoute1 ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
                     }`}
             >
                 一号院 → 三号院
