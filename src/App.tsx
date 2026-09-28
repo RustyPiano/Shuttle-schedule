@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeftRight, ArrowRight, Bus } from 'lucide-react';
+import { ArrowLeftRight, ArrowRight, Bus, Globe, Mail } from 'lucide-react';
 import { NextBusCard } from './components/NextBusCard';
 import { ScheduleList } from './components/ScheduleList';
 import { Segmented } from './components/Segmented';
@@ -8,6 +8,7 @@ import { lines, stops, getTimes, groupTimes, getBusNote, getDayType, findFirstBu
 import type { DayType, LineType, RouteType } from './data';
 
 const dayLabels: Record<DayType, string> = { weekday: '工作日', saturday: '周六', sunday: '周日' };
+const email = 'me@rustypiano.com';
 
 function App() {
   const [selectedLine, setSelectedLine] = useState<LineType>(() => lines.find(line => line === localStorage.getItem('bus-line')) ?? '线路8');
@@ -81,6 +82,16 @@ function App() {
       </NextBusCard>
       <ScheduleList key={`${selectedLine}-${selectedRoute}-${day}`} title={times ? '发车时刻' : '工作日发车时刻'} entries={entries} split={split} live={live} line={selectedLine} route={selectedRoute} />
       {routeStops && <StopList key={`${selectedLine}-${selectedRoute}`} stops={routeStops} />}
+      <footer className="rounded-3xl bg-white p-5 ring-1 ring-stone-200/70">
+        <h2 className="font-semibold">反馈与更新</h2>
+        <p className="mt-1 text-sm text-stone-500">时刻有变化或发现错误，欢迎联系我</p>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <a href={`mailto:${email}?subject=${encodeURIComponent('班车时刻表反馈')}`} className="flex items-center justify-center gap-2 rounded-full bg-(--line) py-2.5 text-sm font-semibold text-white"><Mail className="size-4" />发邮件</a>
+          <a href="https://www.rustypiano.com" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-full bg-stone-100 py-2.5 text-sm font-semibold text-stone-700"><Globe className="size-4" />个人主页</a>
+        </div>
+        {/* 微信等内置浏览器打不开 mailto 链接，显示地址方便复制；select-all 让点一下就选中整个地址 */}
+        <p className="mt-3 text-center text-xs text-stone-500 select-all">{email}</p>
+      </footer>
     </main>
   );
 }
