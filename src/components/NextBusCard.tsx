@@ -1,24 +1,29 @@
+import type { ReactNode } from 'react';
+
 interface NextBusCardProps {
-    nextBus: string | null;
-    diffMinutes: number | null;
-    isToday: boolean;
+    title: string;
+    time: string;
     count: number;
+    hint: string;
     note: string;
-    origin?: string;
+    after?: string;
+    children: ReactNode;
 }
 
-export function NextBusCard({ nextBus, diffMinutes, isToday, count, note, origin }: NextBusCardProps) {
-    return <section className="rounded-2xl bg-primary-700 p-5 text-white" aria-label="下一班车">
+// 做成车票样式：虚线上方是路线和日期，下方是班次；虚线两端的圆形缺口用页面背景色填充
+export function NextBusCard({ title, time, count, hint, note, after, children }: NextBusCardProps) {
+    return <section className="overflow-hidden rounded-3xl bg-(--line-soft) p-5">
+        {children}
+        <div className="relative my-5 border-t-2 border-dashed border-(--line)/25 before:absolute before:-top-[11px] before:-left-[30px] before:size-5 before:rounded-full before:bg-stone-100 after:absolute after:-top-[11px] after:-right-[30px] after:size-5 after:rounded-full after:bg-stone-100" />
         <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-medium">{isToday ? '下一班车' : '当日首班'}</h2>
-            {count > 1 && <span className="text-xs">{count} 辆同时发车</span>}
+            <h2 className="text-xs font-semibold tracking-[0.2em] text-(--line)">{title}</h2>
+            {count > 1 && <span className="text-xs font-medium text-stone-600">{count} 辆同时发车</span>}
         </div>
-        {nextBus ? <>
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mt-2">
-                <p className="text-4xl font-bold tabular-nums tracking-tight">{nextBus}</p>
-                {diffMinutes !== null && <p className="text-sm font-medium">{diffMinutes === 0 ? '到发车时间了' : `${diffMinutes} 分钟后`}</p>}
-            </div>
-            {(origin || note) && <p className="text-sm mt-3">{origin ? `${origin}发车` : ''}{origin && note ? ' · ' : ''}{note}</p>}
-        </> : <p className="text-xl font-semibold mt-3">{isToday ? '今日班车已结束' : '当日无班次'}</p>}
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+            <p className="text-6xl leading-none font-semibold tracking-tight tabular-nums text-stone-950">{time}</p>
+            {hint && <p className="rounded-full bg-(--line) px-3 py-1 text-sm font-semibold text-white">{hint}</p>}
+        </div>
+        {note && <p className="mt-4 text-sm text-stone-600">{note}</p>}
+        {after && <p className="mt-1 text-sm text-stone-600">再下一班 <span className="font-semibold tabular-nums text-stone-900">{after}</span></p>}
     </section>;
 }

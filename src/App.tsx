@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Header } from './components/Header';
-import { DateChips } from './components/DateChips';
-import { RouteTabs } from './components/RouteTabs';
+import { ArrowLeftRight, ArrowRight, Bus } from 'lucide-react';
 import { NextBusCard } from './components/NextBusCard';
 import { ScheduleList } from './components/ScheduleList';
-import { lines, stops, loopTimes, getTimes, getBusNote, groupTimes } from './data';
+import { Segmented } from './components/Segmented';
+import { StopList } from './components/StopList';
+import { lines, stops, getTimes, groupTimes, getBusNote, getDayType, findFirstBusAfter, formatWait } from './data';
 import type { DayType, LineType, RouteType } from './data';
 
+const dayLabels: Record<DayType, string> = { weekday: '工作日', saturday: '周六', sunday: '周日' };
+
 function App() {
-  const [selectedDate, setSelectedDate] = useState('today');
-  const [selectedRoute, setSelectedRoute] = useState<RouteType>(() => localStorage.getItem('bus-direction') === 'route2' ? 'route2' : 'route1');
   const [selectedLine, setSelectedLine] = useState<LineType>(() => lines.find(line => line === localStorage.getItem('bus-line')) ?? '线路8');
-  const [isLoop, setIsLoop] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState<RouteType>(() => localStorage.getItem('bus-direction') === 'route2' ? 'route2' : 'route1');
+  const [pickedDay, setPickedDay] = useState<DayType>();
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -19,51 +20,68 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  const targetDate = new Date(now);
-  if (selectedDate === 'tomorrow') targetDate.setDate(targetDate.getDate() + 1);
-  if (selectedDate === 'saturday') targetDate.setDate(targetDate.getDate() + (6 - now.getDay() + 7) % 7);
-  if (selectedDate === 'sunday') targetDate.setDate(targetDate.getDate() + (7 - now.getDay()) % 7);
-  const isToday = isLoop || targetDate.toDateString() === now.toDateString();
-  const dayType: DayType = targetDate.getDay() === 0 ? 'sunday' : targetDate.getDay() === 6 ? 'saturday' : 'weekday';
-  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  const times = isLoop ? loopTimes : getTimes(selectedLine, selectedRoute, dayType);
-  const next = times ? groupTimes(times).find(entry => !isToday || entry.time >= currentTime) : undefined;
-  const diffMinutes = next && isToday ? Number(next.time.slice(0, 2)) * 60 + Number(next.time.slice(3)) - now.getHours() * 60 - now.getMinutes() : null;
+  const isLoop = selectedLine === '环线';
+  const todayType = getDayType(now);
+  const showDays = !isLoop && getTimes(selectedLine, selectedRoute, 'saturday') !== null;
+  const day = showDays ? pickedDay ?? todayType : todayType;
+  // times 为 null：今天是周末，这条线路没有周末时刻表，列表改为显示工作日时刻
+  const times = getTimes(selectedLine, selectedRoute, day);
+  const live = day === todayType && times !== null;
+  const entries = groupTimes(times ?? getTimes(selectedLine, selectedRoute, 'weekday')!);
+  const currentTime = now.toTimeString().slice(0, 5);
+  const split = live ? entries.filter(entry => entry.time < currentTime).length : 0;
   const routeStops = stops[selectedLine]?.[selectedRoute];
+  const [from, to] = selectedRoute === 'route1' ? ['三号院', '一号院'] : ['一号院', '三号院'];
+
+  let card: { title: string; time: string; count: number; hint: string; after?: string };
+  if (live && split < entries.length) {
+    card = { title: '下一班车', ...entries[split], hint: formatWait(entries[split].time, now), after: entries[split + 1]?.time };
+  } else if (!live && times) {
+    card = { title: `${dayLabels[day]}首班`, ...entries[0], hint: '' };
+  } else {
+    const first = findFirstBusAfter(selectedLine, selectedRoute, now);
+    card = { title: times ? '今日班车已结束' : '暂无周末时刻表', time: first.time, count: first.count, hint: `${first.label}首班` };
+  }
+
+  const switchRoute = () => {
+    const route = selectedRoute === 'route1' ? 'route2' : 'route1';
+    setSelectedRoute(route);
+    localStorage.setItem('bus-direction', route);
+  };
 
   return (
-    <div className="min-h-screen pb-8">
-      <Header onRefresh={() => { setSelectedDate('today'); setNow(new Date()); }} currentTime={`${now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' })} ${currentTime}`} />
-      <main className="max-w-md mx-auto px-4 py-5 space-y-5">
-        <div className="grid grid-cols-2 gap-1 bg-gray-200/70 rounded-xl p-1" aria-label="班车类型">
-          {[false, true].map(loop => <button key={String(loop)} aria-pressed={isLoop === loop} onClick={() => setIsLoop(loop)} className={`rounded-lg py-3 text-sm font-semibold ${isLoop === loop ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600'}`}>{loop ? '三号院环线' : '院际班车'}</button>)}
-        </div>
-        {!isLoop && <>
-          <div className="grid grid-cols-5 gap-2" aria-label="选择线路">
-            {lines.map(line => <button key={line} aria-pressed={selectedLine === line} onClick={() => { setSelectedLine(line); localStorage.setItem('bus-line', line); }} className={`rounded-full py-2.5 text-sm font-medium ${selectedLine === line ? 'bg-gray-900 text-white' : 'bg-white text-gray-600'}`}>{line}</button>)}
+    <main data-line={selectedLine} className="mx-auto max-w-md space-y-4 px-4 pt-4 pb-10">
+      <header className="flex items-center justify-between">
+        <h1 className="flex items-center gap-2.5 text-lg font-bold">
+          <span className="grid size-8 place-items-center rounded-xl bg-(--line) text-white"><Bus className="size-4.5" /></span>
+          校内班车
+        </h1>
+        <p className="text-sm font-medium text-stone-500">{now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' })}</p>
+      </header>
+      <div role="group" aria-label="线路" className="grid grid-cols-6 gap-1.5">
+        {lines.map(line => {
+          const selected = selectedLine === line;
+          return <button key={line} data-line={line} aria-pressed={selected} onClick={() => { setSelectedLine(line); localStorage.setItem('bus-line', line); }} className={`rounded-2xl pt-2.5 pb-2 text-sm font-semibold ${selected ? 'bg-(--line) text-white' : 'bg-white text-stone-600 ring-1 ring-stone-200/70'}`}>
+            <span className={`mx-auto mb-1.5 block h-1 w-4 rounded-full ${selected ? 'bg-white/80' : 'bg-(--line)'}`} />
+            {line}
+          </button>;
+        })}
+      </div>
+      <NextBusCard {...card} note={getBusNote(selectedLine, selectedRoute, card.time)}>
+        {isLoop
+          ? <div className="flex items-baseline justify-between gap-3">
+            <p className="text-xl font-bold">三号院环线</p>
+            <p className="text-xs text-stone-600">2025年9月18日起执行</p>
           </div>
-          <RouteTabs selectedRoute={selectedRoute} onSelect={route => { setSelectedRoute(route); localStorage.setItem('bus-direction', route); }} />
-          <div className="space-y-2">
-            <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} />
-            <p className="text-xs text-gray-500">{targetDate.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' })}</p>
-          </div>
-          {times ? <NextBusCard nextBus={next?.time ?? null} diffMinutes={diffMinutes} isToday={isToday} count={next?.count ?? 0} origin={routeStops?.[0]} note={next ? getBusNote(selectedLine, selectedRoute, next.time) : ''} /> : <div className="bg-white rounded-2xl p-6 text-center text-gray-600">暂无周末时刻表</div>}
-          {routeStops && <details key={`${selectedLine}-${selectedRoute}`} className="rounded-2xl bg-white px-4">
-            <summary className="py-4 text-sm font-medium cursor-pointer">停靠站点 <span className="text-gray-500 font-normal">· {routeStops.length} 站</span></summary>
-            <ol className="space-y-3 pb-4" aria-label="停靠顺序">{routeStops.map((stop, index) => <li key={stop} className="flex gap-3 text-sm items-start"><span className="shrink-0 w-6 h-6 rounded-full bg-primary-50 text-primary-800 text-xs grid place-items-center">{index + 1}</span><span className="pt-0.5">{stop}</span></li>)}</ol>
-          </details>}
-        </>}
-        {isLoop && <>
-          <NextBusCard nextBus={next?.time ?? null} diffMinutes={diffMinutes} isToday count={next?.count ?? 0} note="" />
-          <div className="text-xs text-gray-600 space-y-1">
-            <p>首班 07:30 · 末班 22:30</p>
-            <p>运行日期请以校内通知为准</p>
-          </div>
-        </>}
-        {times && <ScheduleList key={`${isLoop}-${selectedLine}-${selectedRoute}-${selectedDate}`} times={times} isToday={isToday} currentTime={currentTime} line={isLoop ? undefined : selectedLine} route={selectedRoute} />}
-        {isLoop && <p className="text-center text-xs text-gray-500">2025年9月18日起执行</p>}
-      </main>
-    </div>
+          : <div className="flex items-center gap-3">
+            <p className="flex flex-1 items-center gap-2.5 text-xl font-bold">{from}<ArrowRight className="size-5 text-(--line)" strokeWidth={2.5} />{to}</p>
+            <button aria-label="切换方向" onClick={switchRoute} className="grid size-10 place-items-center rounded-full bg-white text-(--line) shadow-sm"><ArrowLeftRight className="size-4.5" /></button>
+          </div>}
+        {showDays && <div className="mt-4"><Segmented label="日期" value={day} onChange={setPickedDay} options={(['weekday', 'saturday', 'sunday'] as const).map(value => ({ value, label: value === todayType ? '今天' : dayLabels[value] }))} /></div>}
+      </NextBusCard>
+      <ScheduleList key={`${selectedLine}-${selectedRoute}-${day}`} title={times ? '发车时刻' : '工作日发车时刻'} entries={entries} split={split} live={live} line={selectedLine} route={selectedRoute} />
+      {routeStops && <StopList key={`${selectedLine}-${selectedRoute}`} stops={routeStops} />}
+    </main>
   );
 }
 

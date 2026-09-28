@@ -1,36 +1,26 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary-50: #fff7ed;
-  --color-primary-100: #ffedd5;
-  --color-primary-200: #fed7aa;
-  --color-primary-300: #fdba74;
-  --color-primary-400: #fb923c;
-  --color-primary-500: #f97316;
-  --color-primary-600: #ea580c;
-  --color-primary-700: #c2410c;
-  --color-primary-800: #9a3412;
-  --color-primary-900: #7c2d12;
+  --font-sans: "Barlow", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
 }
+
+/* 每条线路一种颜色，页面按当前线路取 --line */
+[data-line="线路8"] { --line: var(--color-orange-700); }
+[data-line="理学院"] { --line: var(--color-rose-700); }
+[data-line="系统"] { --line: var(--color-emerald-700); }
+[data-line="空天"] { --line: var(--color-indigo-600); }
+[data-line="气海"] { --line: var(--color-cyan-700); }
+[data-line="环线"] { --line: var(--color-fuchsia-700); }
+[data-line] { --line-soft: color-mix(in oklab, var(--line) 10%, white); }
 
 @layer base {
   body {
-    @apply font-sans antialiased text-gray-900 bg-gray-50;
+    @apply font-sans antialiased text-stone-900 bg-stone-100;
     -webkit-tap-highlight-color: transparent;
   }
   button, summary { touch-action: manipulation; }
   button { cursor: pointer; }
-  :focus-visible { outline: 2px solid #9a3412; outline-offset: 3px; }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
-  }
-}
-
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  summary { list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  :focus-visible { outline: 2px solid var(--line); outline-offset: 3px; }
 }
