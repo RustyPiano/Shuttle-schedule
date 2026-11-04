@@ -10,7 +10,10 @@ import type { Departure, RouteType, ServiceType } from './data';
 const email = 'me@rustypiano.com';
 
 function App() {
-  const [service, setService] = useState<ServiceType>(() => localStorage.getItem('bus-service') === 'loop' ? 'loop' : 'shuttle');
+  const [service, setService] = useState<ServiceType>(() => {
+    const saved = localStorage.getItem('bus-service');
+    return saved === 'loop' || saved === 'loop1' ? saved : 'shuttle';
+  });
   const [selectedRoute, setSelectedRoute] = useState<RouteType>(() => localStorage.getItem('bus-direction') === 'route2' ? 'route2' : 'route1');
   const [pickedDate, setPickedDate] = useState<string>();
   const [pickedTime, setPickedTime] = useState<string>();
@@ -21,7 +24,7 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  const isLoop = service === 'loop';
+  const isLoop = service !== 'shuttle';
   const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
   const date = pickedDate ?? today;
   const time = pickedTime ?? (date === today ? now.toTimeString().slice(0, 5) : '00:00');
@@ -36,7 +39,7 @@ function App() {
     card = { title: live ? '下一班车' : '所选时间起的首班', ...entries[split], hint: live ? formatWait(entries[split].time, now) : '', after: entries[split + 1]?.time };
   } else {
     const first = findFirstBusAfter(service, selectedRoute, query);
-    card = { title: live ? '今日班车已结束' : '当天班车已结束', ...first, hint: `${first.label}首班` };
+    card = { title: entries.length === 0 ? (live ? '今日没有班次' : '当天没有班次') : (live ? '今日班车已结束' : '当天班车已结束'), ...first, hint: `${first.label}首班` };
   }
 
   const switchRoute = () => {
@@ -54,12 +57,12 @@ function App() {
         </h1>
         <p className="text-sm font-medium text-stone-500">{now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' })}</p>
       </header>
-      <Segmented label="班车类型" value={service} onChange={value => { setService(value); localStorage.setItem('bus-service', value); }} options={[{ value: 'shuttle', label: '院际班车' }, { value: 'loop', label: '三号院环线' }]} />
+      <Segmented label="班车类型" value={service} onChange={value => { setService(value); localStorage.setItem('bus-service', value); }} options={[{ value: 'shuttle', label: '院际班车' }, { value: 'loop', label: '三号院环线' }, { value: 'loop1', label: '一号院环线' }]} />
       <NextBusCard {...card} count={card.buses.reduce((sum, bus) => sum + bus.count, 0)} note={!isLoop && card.buses.map(bus => <StopList key={bus.line} {...bus} route={selectedRoute} time={card.time} />)}>
         {isLoop
           ? <div className="flex items-baseline justify-between gap-3">
-            <p className="text-xl font-bold">三号院环线</p>
-            <p className="text-xs text-stone-600">2025年9月18日起执行</p>
+            <p className="text-xl font-bold">{service === 'loop' ? '三号院环线' : '一号院环线'}</p>
+            <p className="text-xs text-stone-600">{service === 'loop' ? '2025年9月18日起执行' : '工作日运行'}</p>
           </div>
           : <div className="flex items-center gap-3">
             <p className="flex flex-1 items-center gap-2.5 text-xl font-bold">{from}<ArrowRight className="size-5 text-(--line)" strokeWidth={2.5} />{to}</p>

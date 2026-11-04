@@ -1,15 +1,15 @@
 export type DayType = 'weekday' | 'saturday' | 'sunday';
 export type RouteType = 'route1' | 'route2';
-export type ServiceType = 'shuttle' | 'loop';
+export type ServiceType = 'shuttle' | 'loop' | 'loop1';
 
-export const lines = ['8号线', '理学院', '系统', '空天', '气海', '前沿', '环线'] as const;
+export const lines = ['8号线', '理学院', '系统', '空天', '气海', '前沿', '环线', '一号院环线'] as const;
 export type LineType = typeof lines[number];
 export interface Departure {
     time: string;
     buses: { line: LineType; count: number }[];
 }
 
-export const schedules: Record<Exclude<LineType, '环线'>, Partial<Record<DayType, Partial<Record<RouteType, string[]>>>>> = {
+export const schedules: Record<Exclude<LineType, '环线' | '一号院环线'>, Partial<Record<DayType, Partial<Record<RouteType, string[]>>>>> = {
     '8号线': {
         weekday: {
             route1: ['07:50', '07:50', '07:50', '09:45', '10:00', '12:00', '12:00', '12:35', '13:45', '16:25', '16:25', '17:05', '17:30', '17:30', '17:55', '18:25', '21:00', '21:30', '21:35', '21:55', '22:15'],
@@ -57,8 +57,18 @@ export const loopTimes = [
     '18:15', '18:45', '19:15', '19:45', '20:15', '20:45', '21:15', '21:45', '22:15',
 ];
 
+export const firstCampusLoopTimes = [
+    '07:30', '07:46', '08:02', '08:18', '08:34',
+    '08:50', '09:10', '09:35', '10:00', '10:25',
+    '10:50', '11:10', '11:30', '11:50', '12:15',
+    '14:00', '14:16', '14:32', '14:48', '15:04',
+    '15:20', '15:45', '16:10', '16:35', '17:00',
+    '17:20', '17:40', '18:00',
+];
+
 export function getTimes(line: LineType, route: RouteType, day: DayType): string[] | null {
     if (line === '环线') return loopTimes;
+    if (line === '一号院环线') return day === 'weekday' ? firstCampusLoopTimes : null;
     return schedules[line][day]?.[route] ?? null;
 }
 export function groupTimes(times: string[]) {
@@ -68,7 +78,9 @@ export function groupTimes(times: string[]) {
 }
 export function getDepartures(service: ServiceType, route: RouteType, day: DayType): Departure[] {
     const departures = new Map<string, Departure['buses']>();
-    for (const line of lines.filter(line => service === 'loop' ? line === '环线' : line !== '环线')) {
+    for (const line of lines.filter(line => service === 'shuttle'
+        ? line !== '环线' && line !== '一号院环线'
+        : line === (service === 'loop' ? '环线' : '一号院环线'))) {
         for (const { time, count } of groupTimes(getTimes(line, route, day) ?? [])) {
             const buses = departures.get(time) ?? [];
             buses.push({ line, count });
