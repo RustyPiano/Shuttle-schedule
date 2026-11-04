@@ -21,6 +21,9 @@
   }
   button, summary { touch-action: manipulation; }
   button { cursor: pointer; }
+  button, a, summary, input {
+    transition: color 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out;
+  }
   summary { list-style: none; }
   summary::-webkit-details-marker { display: none; }
   :focus-visible { outline: 2px solid var(--line); outline-offset: 3px; }

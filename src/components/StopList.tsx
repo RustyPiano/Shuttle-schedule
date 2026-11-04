@@ -7,9 +7,9 @@ export function StopList({ line, route, time, count }: { line: LineType; route: 
     const note = getBusNote(line, route, time);
     const description = <>
         <span className="flex items-center gap-2">
-            <span data-line={line} className="rounded-full bg-(--line-soft) px-2 py-0.5 text-xs font-semibold text-(--line)">{line}</span>
+            <span data-line={line} className="rounded-md bg-(--line-soft) px-2 py-0.5 text-xs font-medium text-(--line)">{line}</span>
             {count > 1 && <span className="text-xs text-stone-500">{count} 辆</span>}
-            {routeStops && <span className="ml-auto flex items-center gap-1 text-xs text-stone-500">站点<ChevronDown className="size-3.5 group-open/stops:rotate-180" /></span>}
+            {routeStops && <span className="ml-auto flex items-center gap-1 text-xs text-stone-500">站点<ChevronDown className="size-4 group-open/stops:rotate-180" strokeWidth={1.5} /></span>}
         </span>
         {note && <span className="mt-1 block text-xs leading-relaxed text-stone-600">{note}</span>}
     </>;
@@ -17,7 +17,7 @@ export function StopList({ line, route, time, count }: { line: LineType; route: 
     if (!routeStops) return <div>{description}</div>;
 
     return <details className="group/stops min-w-0">
-        <summary className="cursor-pointer rounded-lg" aria-label={`${line}班次，查看常规停靠站点`}>{description}</summary>
+        <summary className="cursor-pointer rounded-lg hover:bg-stone-100 active:bg-stone-200" aria-label={`${line}班次，查看常规停靠站点`}>{description}</summary>
         <p className="mt-3 text-xs text-stone-500">常规停靠站点</p>
         <ol className="pt-3" aria-label={`${line}常规停靠顺序`}>
             {routeStops.map((stop, index) => {

@@ -53,10 +53,10 @@ function App() {
   };
 
   return (
-    <main data-line={isLoop ? '环线' : '8号线'} className="mx-auto max-w-md space-y-4 px-4 pt-4 pb-10">
-      <header className="flex items-center justify-between">
-        <h1 className="flex items-center gap-2.5 text-lg font-bold">
-          <span className="grid size-8 place-items-center rounded-xl bg-(--line) text-white"><Bus className="size-4.5" /></span>
+    <main data-line={isLoop ? '环线' : '8号线'} className={`mx-auto grid max-w-md items-start gap-4 px-4 pt-4 pb-10 ${!unconfirmed ? 'lg:max-w-5xl lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] lg:grid-rows-[auto_auto_auto_1fr] lg:gap-x-6' : ''}`}>
+      <header className="flex items-center justify-between lg:col-span-full">
+        <h1 className="flex items-center gap-2.5 text-lg font-semibold">
+          <span className="grid size-8 place-items-center rounded-lg bg-stone-200 text-stone-700"><Bus className="size-4.5" strokeWidth={1.5} /></span>
           校内班车
         </h1>
         <p className="text-sm font-medium text-stone-500">{now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' })}</p>
@@ -65,33 +65,33 @@ function App() {
       <NextBusCard {...card} count={card.buses.reduce((sum, bus) => sum + bus.count, 0)} note={!isLoop && card.buses.map(bus => <StopList key={bus.line} {...bus} route={selectedRoute} time={card.time} />)}>
         {isLoop
           ? <div className="flex items-baseline justify-between gap-3">
-            <p className="text-xl font-bold">{service === 'loop' ? '三号院环线' : '一号院环线'}</p>
+            <p className="text-xl font-semibold">{service === 'loop' ? '三号院环线' : '一号院环线'}</p>
             <p className="text-xs text-stone-600">{service === 'loop' ? '2025年9月18日起执行' : '工作日运行'}</p>
           </div>
           : <div className="flex items-center gap-3">
-            <p className="flex flex-1 items-center gap-2.5 text-xl font-bold">{from}<ArrowRight className="size-5 text-(--line)" strokeWidth={2.5} />{to}</p>
-            <button aria-label="切换方向" onClick={switchRoute} className="grid size-10 place-items-center rounded-full bg-white text-(--line) shadow-sm"><ArrowLeftRight className="size-4.5" /></button>
+            <p className="flex flex-1 items-center gap-2.5 text-xl font-semibold">{from}<ArrowRight className="size-4.5 text-stone-500" strokeWidth={1.5} />{to}</p>
+            <button aria-label="切换方向" onClick={switchRoute} className="grid size-10 place-items-center rounded-lg bg-stone-100 text-stone-700 hover:bg-stone-200 active:bg-stone-300"><ArrowLeftRight className="size-4.5" strokeWidth={1.5} /></button>
           </div>}
         <div className="mt-5">
           <Segmented label="出发日期" value={datePreset} onChange={value => { setDatePreset(value); setPickedTime(undefined); setNow(new Date()); }} options={[{ value: 'today', label: '今天' }, { value: 'tomorrow', label: '明天' }, { value: 'saturday', label: '周六' }, { value: 'sunday', label: '周日' }]} />
         </div>
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-sm text-stone-600">{query.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' })}</p>
-          <label className="flex items-center gap-2 text-xs text-stone-600">出发时间<input aria-label="出发时间" type="time" value={time} onChange={event => setPickedTime(event.target.value || undefined)} className="min-w-0 w-28 rounded-xl border border-(--line)/15 bg-white px-3 py-2.5 text-base text-stone-900" /></label>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="whitespace-nowrap text-sm text-stone-600">{query.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' })}</p>
+          <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs text-stone-600">出发时间<input aria-label="出发时间" type="time" value={time} onChange={event => setPickedTime(event.target.value || undefined)} className="min-w-0 w-28 rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-base text-stone-900 hover:border-stone-400" /></label>
         </div>
         {dayType === 'weekday' && (query.getDay() === 0 || query.getDay() === 6) && <p className="mt-3 text-xs text-stone-600">调休上班日，按工作日时刻表查询</p>}
         <div className="mt-3 flex items-center justify-between gap-2 text-xs text-stone-600">
           <p>{live ? '按当前时间自动更新' : '查找所选时间及之后的班次'}</p>
-          {!live && <button onClick={() => { setDatePreset('today'); setPickedTime(undefined); setNow(new Date()); }} className="shrink-0 rounded-full bg-white px-3 py-1.5 font-semibold text-(--line)">回到现在</button>}
+          {!live && <button onClick={() => { setDatePreset('today'); setPickedTime(undefined); setNow(new Date()); }} className="shrink-0 rounded-lg bg-stone-100 px-3 py-1.5 font-medium text-stone-700 hover:bg-stone-200 active:bg-stone-300">回到现在</button>}
         </div>
       </NextBusCard>
-      {!unconfirmed && <ScheduleList key={`${service}-${selectedRoute}-${date}`} title="发车时刻" entries={entries} split={split} live={live} isLoop={isLoop} route={selectedRoute} />}
-      <footer className="rounded-3xl bg-white p-5 ring-1 ring-stone-200/70">
+      {!unconfirmed && <div className="min-w-0 lg:col-start-2 lg:row-start-2 lg:row-span-3"><ScheduleList key={`${service}-${selectedRoute}-${date}`} title="发车时刻" entries={entries} split={split} live={live} isLoop={isLoop} route={selectedRoute} /></div>}
+      <footer className="rounded-2xl bg-white p-5 ring-1 ring-stone-200/70 lg:col-start-1">
         <h2 className="font-semibold">反馈与更新</h2>
         <p className="mt-1 text-sm text-stone-500">时刻有变化或发现错误，欢迎联系我</p>
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <a href={`mailto:${email}?subject=${encodeURIComponent('班车时刻表反馈')}`} className="flex items-center justify-center gap-2 rounded-full bg-(--line) py-2.5 text-sm font-semibold text-white"><Mail className="size-4" />发邮件</a>
-          <a href="https://www.rustypiano.com" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-full bg-stone-100 py-2.5 text-sm font-semibold text-stone-700"><Globe className="size-4" />个人主页</a>
+          <a href={`mailto:${email}?subject=${encodeURIComponent('班车时刻表反馈')}`} className="flex items-center justify-center gap-2 rounded-lg bg-stone-100 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-200 active:bg-stone-300"><Mail className="size-4.5" strokeWidth={1.5} />发邮件</a>
+          <a href="https://www.rustypiano.com" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-lg bg-stone-100 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-200 active:bg-stone-300"><Globe className="size-4.5" strokeWidth={1.5} />个人主页</a>
         </div>
         {/* 微信等内置浏览器打不开 mailto 链接，显示地址方便复制；select-all 让点一下就选中整个地址 */}
         <p className="mt-3 text-center text-xs text-stone-500 select-all">{email}</p>
