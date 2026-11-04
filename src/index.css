@@ -5,11 +5,12 @@
 }
 
 /* 每条线路一种颜色，页面按当前线路取 --line */
-[data-line="线路8"] { --line: var(--color-orange-700); }
+[data-line="8号线"] { --line: var(--color-orange-700); }
 [data-line="理学院"] { --line: var(--color-rose-700); }
 [data-line="系统"] { --line: var(--color-emerald-700); }
 [data-line="空天"] { --line: var(--color-indigo-600); }
 [data-line="气海"] { --line: var(--color-cyan-700); }
+[data-line="前沿"] { --line: var(--color-amber-700); }
 [data-line="环线"] { --line: var(--color-fuchsia-700); }
 [data-line] { --line-soft: color-mix(in oklab, var(--line) 10%, white); }
 

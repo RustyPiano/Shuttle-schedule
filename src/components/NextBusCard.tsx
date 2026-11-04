@@ -5,7 +5,7 @@ interface NextBusCardProps {
     time: string;
     count: number;
     hint: string;
-    note: string;
+    note: ReactNode;
     after?: string;
     children: ReactNode;
 }
@@ -23,7 +23,7 @@ export function NextBusCard({ title, time, count, hint, note, after, children }:
             <p className="text-6xl leading-none font-semibold tracking-tight tabular-nums text-stone-950">{time}</p>
             {hint && <p className="rounded-full bg-(--line) px-3 py-1 text-sm font-semibold text-white">{hint}</p>}
         </div>
-        {note && <p className="mt-4 text-sm text-stone-600">{note}</p>}
+        {note && <div className="mt-4 space-y-3 text-sm text-stone-600">{note}</div>}
         {after && <p className="mt-1 text-sm text-stone-600">再下一班 <span className="font-semibold tabular-nums text-stone-900">{after}</span></p>}
     </section>;
 }

@@ -1,11 +1,16 @@
 export type DayType = 'weekday' | 'saturday' | 'sunday';
 export type RouteType = 'route1' | 'route2';
+export type ServiceType = 'shuttle' | 'loop';
 
-export const lines = ['线路8', '理学院', '系统', '空天', '气海', '环线'] as const;
+export const lines = ['8号线', '理学院', '系统', '空天', '气海', '前沿', '环线'] as const;
 export type LineType = typeof lines[number];
+export interface Departure {
+    time: string;
+    buses: { line: LineType; count: number }[];
+}
 
-export const schedules: Record<Exclude<LineType, '环线'>, Partial<Record<DayType, Record<RouteType, string[]>>>> = {
-    线路8: {
+export const schedules: Record<Exclude<LineType, '环线'>, Partial<Record<DayType, Partial<Record<RouteType, string[]>>>>> = {
+    '8号线': {
         weekday: {
             route1: ['07:50', '07:50', '07:50', '09:45', '10:00', '12:00', '12:00', '12:35', '13:45', '16:25', '16:25', '17:05', '17:30', '17:30', '17:55', '18:25', '21:00', '21:30', '21:35', '21:55', '22:15'],
             route2: ['07:10', '07:10', '07:20', '07:20', '07:30', '07:30', '07:30', '09:20', '09:20', '09:30', '11:25', '13:50', '14:00', '15:30', '16:25', '16:25', '18:55', '18:55', '21:00'],
@@ -19,10 +24,11 @@ export const schedules: Record<Exclude<LineType, '环线'>, Partial<Record<DayTy
             route2: ['07:20', '09:30', '13:50'],
         },
     },
-    理学院: { weekday: { route1: ['09:45', '18:25', '20:20'], route2: ['07:20', '08:00', '11:25'] } },
+    理学院: { weekday: { route1: ['09:45', '20:20'], route2: ['07:20', '08:00', '11:25'] } },
     系统: { weekday: { route1: ['12:05', '17:50', '21:00'], route2: ['07:25', '14:00'] } },
     空天: { weekday: { route1: ['08:10', '17:45', '21:50'], route2: ['07:25', '16:30', '21:05'] } },
-    气海: { weekday: { route1: ['07:30', '18:00', '20:30'], route2: ['08:30', '18:50', '21:10'] } },
+    气海: { weekday: { route1: ['07:30', '18:00', '20:30'], route2: ['08:00', '08:30', '18:50', '21:10'] } },
+    前沿: { weekday: { route2: ['08:20'] } },
 };
 export const stops: Partial<Record<LineType, Record<RouteType, string[]>>> = {
     理学院: {
@@ -60,24 +66,35 @@ export function groupTimes(times: string[]) {
     for (const time of times) counts.set(time, (counts.get(time) ?? 0) + 1);
     return [...counts].sort(([a], [b]) => a.localeCompare(b)).map(([time, count]) => ({ time, count }));
 }
+export function getDepartures(service: ServiceType, route: RouteType, day: DayType): Departure[] {
+    const departures = new Map<string, Departure['buses']>();
+    for (const line of lines.filter(line => service === 'loop' ? line === '环线' : line !== '环线')) {
+        for (const { time, count } of groupTimes(getTimes(line, route, day) ?? [])) {
+            const buses = departures.get(time) ?? [];
+            buses.push({ line, count });
+            departures.set(time, buses);
+        }
+    }
+    return [...departures].sort(([a], [b]) => a.localeCompare(b)).map(([time, buses]) => ({ time, buses }));
+}
 export function getBusNote(line: LineType, route: RouteType, time: string) {
-    const origin = line === '理学院' && route === 'route2' && time === '08:00' ? '103教学楼' : stops[line]?.[route][0];
+    const origin = route === 'route2' && ((line === '气海' && time === '08:00') || (line === '前沿' && time === '08:20')) ? '103教学楼' : stops[line]?.[route][0];
     let via = '';
+    if (line === '理学院' && route === 'route2' && time === '07:20') via = '103教学楼';
     if (line === '系统' && route === 'route1') via = time === '12:05' ? '二食堂强军大道口' : '科大佳园南苑东门';
-    if (line === '线路8' && time > '17:00') via = '科大佳园';
+    if (line === '8号线' && time > '17:00') via = '科大佳园';
     return [origin && `${origin}发车`, via && `途经${via}`].filter(Boolean).join(' · ');
 }
 export function getDayType(date: Date): DayType {
     return date.getDay() === 0 ? 'sunday' : date.getDay() === 6 ? 'saturday' : 'weekday';
 }
-export function findFirstBusAfter(line: LineType, route: RouteType, date: Date) {
+export function findFirstBusAfter(service: ServiceType, route: RouteType, date: Date) {
     for (let offset = 1; ; offset++) {
         const day = new Date(date);
         day.setDate(date.getDate() + offset);
-        const times = getTimes(line, route, getDayType(day));
-        if (times) {
-            const { time, count } = groupTimes(times)[0];
-            return { label: offset === 1 ? '明天' : day.toLocaleDateString('zh-CN', { weekday: 'short' }), time, count };
+        const departures = getDepartures(service, route, getDayType(day));
+        if (departures.length > 0) {
+            return { label: day.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }), ...departures[0] };
         }
     }
 }
