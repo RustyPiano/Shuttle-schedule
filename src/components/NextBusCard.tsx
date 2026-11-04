@@ -20,7 +20,7 @@ export function NextBusCard({ title, time, count, hint, note, after, children }:
             {count > 1 && <span className="text-xs font-medium text-stone-600">{count} 辆同时发车</span>}
         </div>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-            <p className="text-6xl leading-none font-semibold tracking-tight tabular-nums text-stone-950">{time}</p>
+            {time && <p className="text-6xl leading-none font-semibold tracking-tight tabular-nums text-stone-950">{time}</p>}
             {hint && <p className="rounded-full bg-(--line) px-3 py-1 text-sm font-semibold text-white">{hint}</p>}
         </div>
         {note && <div className="mt-4 space-y-3 text-sm text-stone-600">{note}</div>}

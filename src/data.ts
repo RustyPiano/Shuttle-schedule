@@ -1,6 +1,11 @@
-export type DayType = 'weekday' | 'saturday' | 'sunday';
+import calendar from 'chinese-days/dist/chinese-days.json' with { type: 'json' };
+
+export type DayType = 'weekday' | 'saturday' | 'sunday' | 'holiday' | 'unknown';
 export type RouteType = 'route1' | 'route2';
 export type ServiceType = 'shuttle' | 'loop' | 'loop1';
+export type DatePreset = 'today' | 'tomorrow' | 'saturday' | 'sunday';
+
+const calendarYears = new Set(Object.keys(calendar.holidays).map(date => Number(date.slice(0, 4))));
 
 export const lines = ['8号线', '理学院', '系统', '空天', '气海', '前沿', '环线', '一号院环线'] as const;
 export type LineType = typeof lines[number];
@@ -67,6 +72,7 @@ export const firstCampusLoopTimes = [
 ];
 
 export function getTimes(line: LineType, route: RouteType, day: DayType): string[] | null {
+    if (day === 'holiday' || day === 'unknown') return null;
     if (line === '环线') return loopTimes;
     if (line === '一号院环线') return day === 'weekday' ? firstCampusLoopTimes : null;
     return schedules[line][day]?.[route] ?? null;
@@ -98,15 +104,30 @@ export function getBusNote(line: LineType, route: RouteType, time: string) {
     return [origin && `${origin}发车`, via && `途经${via}`].filter(Boolean).join(' · ');
 }
 export function getDayType(date: Date): DayType {
+    if (!calendarYears.has(date.getFullYear())) return 'unknown';
+    const key = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+    if (Object.hasOwn(calendar.workdays, key)) return 'weekday';
+    if (Object.hasOwn(calendar.holidays, key)) return 'holiday';
     return date.getDay() === 0 ? 'sunday' : date.getDay() === 6 ? 'saturday' : 'weekday';
+}
+export function getPresetDate(preset: DatePreset, now: Date) {
+    const weekend = (6 - now.getDay() + 7) % 7;
+    const offsets = { today: 0, tomorrow: 1, saturday: weekend, sunday: weekend + 1 };
+    const date = new Date(now);
+    date.setDate(date.getDate() + offsets[preset]);
+    return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
 }
 export function findFirstBusAfter(service: ServiceType, route: RouteType, date: Date) {
     for (let offset = 1; ; offset++) {
         const day = new Date(date);
         day.setDate(date.getDate() + offset);
-        const departures = getDepartures(service, route, getDayType(day));
+        const dayType = getDayType(day);
+        const label = day.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
+        // 未知日期可能有车，不能跳过后声称找到了下一班。
+        if (dayType === 'holiday' || dayType === 'unknown') return { label, time: '', buses: [] };
+        const departures = getDepartures(service, route, dayType);
         if (departures.length > 0) {
-            return { label: day.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }), ...departures[0] };
+            return { label, ...departures[0] };
         }
     }
 }

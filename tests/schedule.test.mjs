@@ -1,14 +1,81 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { lines, schedules, loopTimes, firstCampusLoopTimes, getTimes, groupTimes, getDepartures, getBusNote, findFirstBusAfter, formatWait } from '../src/data.ts';
+import { lines, schedules, loopTimes, firstCampusLoopTimes, getTimes, groupTimes, getDepartures, getBusNote, getDayType, getPresetDate, findFirstBusAfter, formatWait } from '../src/data.ts';
 
 test('同一时刻合并为一项，保留车辆数量并按时间排序', () => {
     assert.deepEqual(groupTimes(['08:00', '07:50', '07:50']), [{ time: '07:50', count: 2 }, { time: '08:00', count: 1 }]);
 });
 
-test('没有周末数据的线路在周末返回 null，环线不分日期', () => {
+test('快捷日期包含今天、明天及同一个周末的周六周日', () => {
+    const wednesday = new Date(2026, 10, 4, 23, 59);
+    assert.equal(getPresetDate('today', wednesday), '2026-11-04');
+    assert.equal(getPresetDate('tomorrow', wednesday), '2026-11-05');
+    assert.equal(getPresetDate('saturday', wednesday), '2026-11-07');
+    assert.equal(getPresetDate('sunday', wednesday), '2026-11-08');
+    const saturday = new Date(2026, 10, 7, 12);
+    assert.equal(getPresetDate('saturday', saturday), '2026-11-07');
+    assert.equal(getPresetDate('sunday', saturday), '2026-11-08');
+    const sunday = new Date(2026, 10, 8, 12);
+    assert.equal(getPresetDate('saturday', sunday), '2026-11-14');
+    assert.equal(getPresetDate('sunday', sunday), '2026-11-15');
+});
+
+test('快捷日期处理跨年、闰日和午夜换日，并继续识别调休', () => {
+    assert.equal(getPresetDate('tomorrow', new Date(2026, 11, 31, 23, 59)), '2027-01-01');
+    assert.equal(getPresetDate('saturday', new Date(2026, 11, 31)), '2027-01-02');
+    assert.equal(getPresetDate('sunday', new Date(2026, 11, 31)), '2027-01-03');
+    assert.equal(getPresetDate('tomorrow', new Date(2024, 1, 28)), '2024-02-29');
+    assert.equal(getPresetDate('today', new Date(2026, 10, 5, 0, 0)), '2026-11-05');
+    const saturday = getPresetDate('saturday', new Date(2026, 1, 13));
+    assert.equal(saturday, '2026-02-14');
+    assert.equal(getDayType(new Date(`${saturday}T00:00:00`)), 'weekday');
+});
+
+test('没有周末数据的线路在周末返回 null，三号院环线在普通周末运行', () => {
     assert.equal(getTimes('系统', 'route1', 'saturday'), null);
     assert.equal(getTimes('环线', 'route1', 'sunday'), loopTimes);
+});
+
+test('2026年全部放假日期与国务院通知一致，普通周末继续按星期判断', () => {
+    const holidays = [
+        '01-01', '01-02', '01-03',
+        '02-15', '02-16', '02-17', '02-18', '02-19', '02-20', '02-21', '02-22', '02-23',
+        '04-04', '04-05', '04-06',
+        '05-01', '05-02', '05-03', '05-04', '05-05',
+        '06-19', '06-20', '06-21',
+        '09-25', '09-26', '09-27',
+        '10-01', '10-02', '10-03', '10-04', '10-05', '10-06', '10-07',
+    ];
+    const workdays = ['01-04', '02-14', '02-28', '05-09', '09-20', '10-10'];
+    for (const date of holidays) assert.equal(getDayType(new Date(`2026-${date}T12:00:00`)), 'holiday', date);
+    for (const date of workdays) {
+        const day = getDayType(new Date(`2026-${date}T12:00:00`));
+        assert.equal(day, 'weekday', date);
+        assert.equal(getDepartures('loop1', 'route1', day).length, 28);
+        assert.deepEqual(getDepartures('shuttle', 'route2', day), getDepartures('shuttle', 'route2', 'weekday'));
+    }
+    assert.equal(getDayType(new Date(2026, 10, 7, 12)), 'saturday');
+    assert.equal(getDayType(new Date(2026, 10, 8, 12)), 'sunday');
+    assert.equal(getDayType(new Date(2026, 10, 9, 12)), 'weekday');
+});
+
+test('节假日和未收录年份不提供未经确认的班次', () => {
+    assert.equal(getDayType(new Date(2003, 0, 1)), 'unknown');
+    assert.equal(getDayType(new Date(9999, 0, 1)), 'unknown');
+    for (const day of ['holiday', 'unknown']) {
+        for (const route of ['route1', 'route2']) {
+            for (const line of lines) assert.equal(getTimes(line, route, day), null);
+            for (const service of ['shuttle', 'loop', 'loop1']) assert.deepEqual(getDepartures(service, route, day), []);
+        }
+    }
+});
+
+test('查找下一班车识别周末补班，遇到假期和未收录年份时提示待确认', () => {
+    assert.deepEqual(findFirstBusAfter('loop1', 'route1', new Date(2026, 1, 13, 23)), { label: '2月14日', time: '07:30', buses: [{ line: '一号院环线', count: 1 }] });
+    for (const service of ['shuttle', 'loop', 'loop1']) {
+        assert.deepEqual(findFirstBusAfter(service, 'route1', new Date(2026, 1, 14, 23)), { label: '2月15日', time: '', buses: [] });
+        assert.deepEqual(findFirstBusAfter(service, 'route2', new Date(2026, 11, 31, 23)), { label: '1月1日', time: '', buses: [] });
+    }
 });
 
 test('一号院环线按照片录入28班，仅工作日运行且不区分方向', () => {
@@ -60,10 +127,10 @@ test('理学院取消18:25班次，气海与前沿包含新增班次', () => {
 });
 
 test('当天没有剩余班次时找到下一个有班次的日子', () => {
-    const fridayNight = new Date(2026, 8, 25, 23, 0);
-    assert.deepEqual(findFirstBusAfter('shuttle', 'route1', fridayNight), { label: '9月26日', time: '07:50', buses: [{ line: '8号线', count: 1 }] });
-    assert.deepEqual(findFirstBusAfter('shuttle', 'route2', new Date(2026, 8, 27, 23, 0)), { label: '9月28日', time: '07:10', buses: [{ line: '8号线', count: 2 }] });
-    assert.deepEqual(findFirstBusAfter('loop', 'route2', fridayNight), { label: '9月26日', time: '07:30', buses: [{ line: '环线', count: 1 }] });
+    const fridayNight = new Date(2026, 10, 6, 23, 0);
+    assert.deepEqual(findFirstBusAfter('shuttle', 'route1', fridayNight), { label: '11月7日', time: '07:50', buses: [{ line: '8号线', count: 1 }] });
+    assert.deepEqual(findFirstBusAfter('shuttle', 'route2', new Date(2026, 10, 8, 23, 0)), { label: '11月9日', time: '07:10', buses: [{ line: '8号线', count: 2 }] });
+    assert.deepEqual(findFirstBusAfter('loop', 'route2', fridayNight), { label: '11月7日', time: '07:30', buses: [{ line: '环线', count: 1 }] });
 });
 
 test('院际班车按时刻汇总各线路，同一时刻保留线路与车辆数量', () => {

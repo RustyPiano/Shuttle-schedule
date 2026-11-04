@@ -4,8 +4,8 @@ import { NextBusCard } from './components/NextBusCard';
 import { ScheduleList } from './components/ScheduleList';
 import { Segmented } from './components/Segmented';
 import { StopList } from './components/StopList';
-import { getDepartures, getDayType, findFirstBusAfter, formatWait } from './data';
-import type { Departure, RouteType, ServiceType } from './data';
+import { getDepartures, getDayType, getPresetDate, findFirstBusAfter, formatWait } from './data';
+import type { DatePreset, Departure, RouteType, ServiceType } from './data';
 
 const email = 'me@rustypiano.com';
 
@@ -15,7 +15,7 @@ function App() {
     return saved === 'loop' || saved === 'loop1' ? saved : 'shuttle';
   });
   const [selectedRoute, setSelectedRoute] = useState<RouteType>(() => localStorage.getItem('bus-direction') === 'route2' ? 'route2' : 'route1');
-  const [pickedDate, setPickedDate] = useState<string>();
+  const [datePreset, setDatePreset] = useState<DatePreset>('today');
   const [pickedTime, setPickedTime] = useState<string>();
   const [now, setNow] = useState(() => new Date());
 
@@ -25,21 +25,25 @@ function App() {
   }, []);
 
   const isLoop = service !== 'shuttle';
-  const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
-  const date = pickedDate ?? today;
+  const today = getPresetDate('today', now);
+  const date = getPresetDate(datePreset, now);
   const time = pickedTime ?? (date === today ? now.toTimeString().slice(0, 5) : '00:00');
   const query = new Date(`${date}T${time}:00`);
-  const live = pickedDate === undefined && pickedTime === undefined;
-  const entries = getDepartures(service, selectedRoute, getDayType(query));
+  const live = date === today && pickedTime === undefined;
+  const dayType = getDayType(query);
+  const unconfirmed = dayType === 'holiday' || dayType === 'unknown';
+  const entries = getDepartures(service, selectedRoute, dayType);
   const split = entries.filter(entry => entry.time < time).length;
   const [from, to] = selectedRoute === 'route1' ? ['三号院', '一号院'] : ['一号院', '三号院'];
 
   let card: Departure & { title: string; hint: string; after?: string };
-  if (split < entries.length) {
+  if (unconfirmed) {
+    card = { title: '班车安排待确认', time: '', buses: [], hint: dayType === 'holiday' ? '节假日期间，请查看学校通知' : '该年份的节假日资料尚未收录' };
+  } else if (split < entries.length) {
     card = { title: live ? '下一班车' : '所选时间起的首班', ...entries[split], hint: live ? formatWait(entries[split].time, now) : '', after: entries[split + 1]?.time };
   } else {
     const first = findFirstBusAfter(service, selectedRoute, query);
-    card = { title: entries.length === 0 ? (live ? '今日没有班次' : '当天没有班次') : (live ? '今日班车已结束' : '当天班车已结束'), ...first, hint: `${first.label}首班` };
+    card = { title: entries.length === 0 ? (live ? '今日没有班次' : '当天没有班次') : (live ? '今日班车已结束' : '当天班车已结束'), ...first, hint: first.time ? `${first.label}首班` : `${first.label}班车安排待确认` };
   }
 
   const switchRoute = () => {
@@ -68,16 +72,20 @@ function App() {
             <p className="flex flex-1 items-center gap-2.5 text-xl font-bold">{from}<ArrowRight className="size-5 text-(--line)" strokeWidth={2.5} />{to}</p>
             <button aria-label="切换方向" onClick={switchRoute} className="grid size-10 place-items-center rounded-full bg-white text-(--line) shadow-sm"><ArrowLeftRight className="size-4.5" /></button>
           </div>}
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <label className="min-w-0 text-xs text-stone-600">出发日期<input aria-label="出发日期" type="date" min={today} value={date} onChange={event => setPickedDate(event.target.value || undefined)} className="mt-1.5 block min-w-0 w-full rounded-xl border border-(--line)/15 bg-white px-3 py-2.5 text-base text-stone-900" /></label>
-          <label className="min-w-0 text-xs text-stone-600">出发时间<input aria-label="出发时间" type="time" value={time} onChange={event => setPickedTime(event.target.value || undefined)} className="mt-1.5 block min-w-0 w-full rounded-xl border border-(--line)/15 bg-white px-3 py-2.5 text-base text-stone-900" /></label>
+        <div className="mt-5">
+          <Segmented label="出发日期" value={datePreset} onChange={value => { setDatePreset(value); setPickedTime(undefined); setNow(new Date()); }} options={[{ value: 'today', label: '今天' }, { value: 'tomorrow', label: '明天' }, { value: 'saturday', label: '周六' }, { value: 'sunday', label: '周日' }]} />
         </div>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-stone-600">{query.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' })}</p>
+          <label className="flex items-center gap-2 text-xs text-stone-600">出发时间<input aria-label="出发时间" type="time" value={time} onChange={event => setPickedTime(event.target.value || undefined)} className="min-w-0 w-28 rounded-xl border border-(--line)/15 bg-white px-3 py-2.5 text-base text-stone-900" /></label>
+        </div>
+        {dayType === 'weekday' && (query.getDay() === 0 || query.getDay() === 6) && <p className="mt-3 text-xs text-stone-600">调休上班日，按工作日时刻表查询</p>}
         <div className="mt-3 flex items-center justify-between gap-2 text-xs text-stone-600">
           <p>{live ? '按当前时间自动更新' : '查找所选时间及之后的班次'}</p>
-          {!live && <button onClick={() => { setPickedDate(undefined); setPickedTime(undefined); setNow(new Date()); }} className="shrink-0 rounded-full bg-white px-3 py-1.5 font-semibold text-(--line)">回到现在</button>}
+          {!live && <button onClick={() => { setDatePreset('today'); setPickedTime(undefined); setNow(new Date()); }} className="shrink-0 rounded-full bg-white px-3 py-1.5 font-semibold text-(--line)">回到现在</button>}
         </div>
       </NextBusCard>
-      <ScheduleList key={`${service}-${selectedRoute}-${date}`} title="发车时刻" entries={entries} split={split} live={live} isLoop={isLoop} route={selectedRoute} />
+      {!unconfirmed && <ScheduleList key={`${service}-${selectedRoute}-${date}`} title="发车时刻" entries={entries} split={split} live={live} isLoop={isLoop} route={selectedRoute} />}
       <footer className="rounded-3xl bg-white p-5 ring-1 ring-stone-200/70">
         <h2 className="font-semibold">反馈与更新</h2>
         <p className="mt-1 text-sm text-stone-500">时刻有变化或发现错误，欢迎联系我</p>
